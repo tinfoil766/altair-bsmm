@@ -2659,9 +2659,6 @@ public static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
 [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
 public static extern IntPtr GetModuleHandle(string lpModuleName);
 
-[DllImport("kernel32.dll")]
-public static extern bool VirtualProtect(IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
-
 [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
 public static extern IntPtr OpenFileMappingW(uint dwDesiredAccess, bool bInheritHandle, string lpName);
 
@@ -2680,9 +2677,6 @@ public static extern IntPtr GetCurrentThread();
 [DllImport("kernel32.dll", SetLastError = true)]
 public static extern bool GetThreadContext(IntPtr hThread, IntPtr lpContext);
 
-[DllImport("kernel32.dll", SetLastError = true)]
-public static extern bool SetThreadContext(IntPtr hThread, IntPtr lpContext);
-
 [DllImport("user32.dll")]
 public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
 
@@ -2700,9 +2694,6 @@ public static extern int GetWindowTextW(IntPtr hWnd, StringBuilder lpString, int
 
 [DllImport("user32.dll", SetLastError = true)]
 public static extern bool GetWindowDisplayAffinity(IntPtr hWnd, out uint dwAffinity);
-
-[DllImport("user32.dll", SetLastError = true)]
-public static extern bool SetWindowDisplayAffinity(IntPtr hWnd, uint dwAffinity);
 
 [DllImport("user32.dll")]
 public static extern int GetSystemMetrics(int nIndex);
@@ -2807,7 +2798,6 @@ public static string GetModuleHookDetails(string dllName, string functionName, b
 
     if (detail != null) {
         _detectedHooks[key] = detail;
-        UnhookFunctionFromDisk(dllName, functionName);
     }
     return _detectedHooks.ContainsKey(key) ? _detectedHooks[key] : detail;
 }
@@ -2899,7 +2889,6 @@ public static string CheckHardwareBreakpoints() {
                     Marshal.WriteInt64(pCtx, 0x58, 0);
                     Marshal.WriteInt64(pCtx, 0x60, 0);
                     Marshal.WriteInt64(pCtx, 0x70, 0);
-                    SetThreadContext(hT, pCtx);
                     return "DR0=0x" + dr0.ToString("X") + ", DR1=0x" + dr1.ToString("X") + ", DR2=0x" + dr2.ToString("X") + ", DR3=0x" + dr3.ToString("X") + ", DR7=0x" + dr7.ToString("X");
                 }
             }
@@ -3005,8 +2994,6 @@ public static string ScanAmsiTextSectionIntegrity() {
                 }
 
                 if (mismatchedBytes > 0) {
-                    UnhookFunctionFromDisk("amsi.dll", "AmsiScanBuffer");
-                    UnhookFunctionFromDisk("amsi.dll", "AmsiInitialize");
                     return string.Format("{0} modified byte(s) in amsi.dll .text section [Neutralized] (First hook at RVA +0x{1:X})", mismatchedBytes, firstDiffRva);
                 }
                 break;
@@ -3026,7 +3013,6 @@ private static bool OverlayEnumCallback(IntPtr hWnd, IntPtr lParam) {
         GetWindowThreadProcessId(hWnd, out wdaPid);
         StringBuilder wdaTitle = new StringBuilder(256);
         GetWindowTextW(hWnd, wdaTitle, wdaTitle.Capacity);
-        try { SetWindowDisplayAffinity(hWnd, 0U); } catch {}
         _overlayHits.Add("WDA|" + wdaPid.ToString() + "|" + aff.ToString("X") + "|" + (vis ? "Visible" : "Hidden") + "|" + wdaTitle.ToString());
     }
     if (!vis) return true;
